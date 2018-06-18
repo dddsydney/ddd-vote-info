@@ -388,3 +388,5 @@ paket-files/
 *.sln.iml
 
 packages
+
+DDDVoteInfo/appsettings.json
