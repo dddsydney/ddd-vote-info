@@ -15,11 +15,15 @@ let voteExists sessions (vote: Vote) =
 
 type SessionVote =
      { Title: string
+       Presenter: string
+       TrackLength: string
        SessionId: string
        TicketVote: bool }
 
 type VoteResult =
      { Title: string
+       Presenter: string
+       TrackLength: string
        TotalVotes: int
        TicketHolderVotes: int
        NonTicketHolderVotes: int }
@@ -30,24 +34,32 @@ let countVotes votes sessions =
   |> Seq.map(fun (v, _) -> 
             let (session, _) = sessions |> Seq.find(fun (s, _) -> s.RowKey = v.SessionId.ToString())
             { Title = session.SessionTitle
+              Presenter = session.PresenterName
+              TrackLength = session.SessionLength
               SessionId = session.RowKey
               TicketVote = v.TicketNumber = "" })
   |> Seq.groupBy(fun r -> r.Title)
   |> Seq.map(fun (key, sess) ->
              let ticketVotes = sess |> Seq.filter(fun s -> s.TicketVote) |> Seq.length
              let nonTicketVotes = sess |> Seq.filter(fun s -> not s.TicketVote) |> Seq.length
+             let voteInfo = sess |> Seq.head // the rest of the info we can get from just the first session
              { Title = key
+               Presenter = voteInfo.Presenter
+               TrackLength = voteInfo.TrackLength
                TotalVotes = (ticketVotes * 2) + nonTicketVotes
                TicketHolderVotes = ticketVotes
                NonTicketHolderVotes = nonTicketVotes })
    |> Seq.sortByDescending(fun r -> r.TotalVotes)
 
 let printVotes category count countedVotes =
+  let titleLength = countedVotes |> Seq.map(fun v -> v.Title.Length) |> Seq.sortByDescending id |> Seq.head
+  let presenterLength = countedVotes |> Seq.map(fun v -> v.Presenter.Length) |> Seq.sortByDescending id |> Seq.head
+
   printfn "Top %d %s sessions" count category
-  printfn "Total\tTHV\tNTHV\tTitle"
+  printfn "Total | THV | NTHV | %-*s | %-*s | Session Length" titleLength "Title" presenterLength "Presenter"
   countedVotes
   |> Seq.take count
-  |> Seq.iter (fun v -> printfn "%d\t%d\t%d\t%s" v.TotalVotes v.TicketHolderVotes v.NonTicketHolderVotes v.Title)
+  |> Seq.iter (fun v -> printfn "%5d | %3d | %4d | %-*s | %-*s | %s" v.TotalVotes v.TicketHolderVotes v.NonTicketHolderVotes titleLength v.Title presenterLength v.Presenter v.TrackLength)
   printfn "----"
   printfn ""
 
